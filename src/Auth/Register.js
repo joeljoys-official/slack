@@ -10,6 +10,7 @@ import {
 } from "semantic-ui-react";
 import firebase from "../Firebase";
 import { Link } from "react-router-dom";
+import md5 from "md5";
 export class Register extends Component {
   state = {
     username: "",
@@ -18,6 +19,7 @@ export class Register extends Component {
     passwordConfirmation: "",
     errors: [],
     loading: false,
+    usersRef: firebase.database().ref("users"),
   };
 
   // error Display setting
@@ -59,7 +61,7 @@ export class Register extends Component {
     );
   };
   isFormValid = ({ password, passwordConfirmation }) => {
-    if (password.trim.length < 6 || passwordConfirmation.trim.length < 6) {
+    if (password.length < 6 || passwordConfirmation.length < 6) {
       return false;
     }
     if (passwordConfirmation !== password) {
@@ -75,7 +77,33 @@ export class Register extends Component {
       firebase
         .auth()
         .createUserWithEmailAndPassword(this.state.email, this.state.password)
-        .then((Response) => this.setState({ loading: false }))
+        .then((createdUser) =>
+          createdUser.user
+            .updateProfile({
+              displayName: this.state.username,
+              photoURL: `http://en.gravatar.com/avatar/${md5(
+                createdUser.user.email
+              )}?d=identicon`,
+            })
+            .then(() => {
+              this.saveUser(createdUser)
+                .then(() => {
+                  this.setState({ loading: false });
+                })
+                .catch((err) => {
+                  this.setState({
+                    errors: this.state.errors.concat(err),
+                    loading: false,
+                  });
+                });
+            })
+            .catch((err) => {
+              this.setState({
+                errors: this.state.errors.concat(err),
+                loading: false,
+              });
+            })
+        )
         .catch((err) =>
           this.setState({
             loading: false,
@@ -90,6 +118,14 @@ export class Register extends Component {
       return <p key={i}>{error.message}</p>;
     });
   };
+
+  saveUser = (createdUser) => {
+    return this.state.usersRef.child(createdUser.user.uid).set({
+      name: createdUser.user.displayName,
+      avatar: createdUser.user.photoURL,
+    });
+  };
+
   render() {
     const { errors } = this.state;
     return (
