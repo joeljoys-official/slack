@@ -71,9 +71,9 @@ export class Register extends Component {
     }
   };
   formSubmit = (event) => {
+    event.preventDefault();
     if (this.fromValidHandler()) {
-      this.setState({ loading: true });
-      event.preventDefault();
+      this.setState({ loading: true, error: [] });
       firebase
         .auth()
         .createUserWithEmailAndPassword(this.state.email, this.state.password)
